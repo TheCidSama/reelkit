@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>reelkit example: stats</title></head>
+<body>
+<script type="module">
+// Year-in-numbers for a fictional open-source project. ~15 s, 1920x1080 @ 60 fps.
+// One number per beat: each stat gets a hold long enough to read (>= 1.5 s after it lands).
+import { reel, rgba, ease, clamp, lerp } from '/reelkit/reel.js';
+
+const BG = '#f4f1ea', INK = '#16151a', DIM = '#6f6b75', LINE = 'rgba(22,21,26,.10)';
+const ORANGE = '#ff5b2e', GREEN = '#17a673', BLUE = '#3466ff';
+
+const label = (s, str, o) => s.text(str, { size: 26, weight: 600, color: DIM, tracking: 0.08, ...o });
+
+reel({ width: 1920, height: 1080, fps: 60, background: BG, grain: 0.035 })
+
+  // 1 · Title card
+  .scene('title', 2.8, s => {
+    s.bg(BG);
+    s.grid({ spacing: 60, color: LINE, lines: true, x0: 0, y0: 0, x1: s.w, y1: s.h });
+    const k = s.tween(0.1, 0.9, 'outExpo');
+    s.ctx.fillStyle = ORANGE; s.roundRect(160, 330, 14, 300 * k, 7); s.ctx.fill();
+    label(s, '2026 · YEAR IN NUMBERS', { x: 220, y: 380, alpha: s.tween(0.25, 0.5) });
+    s.words('Driftwood had\na *big* year.', { x: 214, y: 520, size: 128, weight: 800, color: INK, accent: ORANGE, at: 0.35, stagger: 0.08, style: 'mask', lineHeight: 1.0, exit: 2.35 });
+  })
+
+  // 2 · Hero number: GitHub stars with an odometer and a growth line.
+  .scene('stars', 4.2, s => {
+    s.bg(BG);
+    s.grid({ spacing: 60, color: LINE, lines: true, x0: 0, y0: 0, x1: s.w, y1: s.h });
+    label(s, 'GITHUB STARS', { x: 160, y: 300, alpha: s.tween(0.1, 0.4) });
+    s.odometer(48213, { x: 152, y: 520, size: 210, weight: 800, color: INK, at: 0.25, dur: 2.0, tracking: -0.04 });
+    s.layer({ alpha: s.tween(1.7, 0.5), y: (1 - s.tween(1.7, 0.7, 'outExpo')) * 16 }, () => {
+      s.pill('▲ 312% vs 2025', { x: 160, y: 590, size: 30, fill: rgba(GREEN, 0.12), color: GREEN, stroke: rgba(GREEN, 0.3) });
+    });
+    const pts = [2, 3, 3.4, 4.1, 5, 6.2, 7.0, 9.1, 11.8, 14.2, 18.5, 24, 31, 36.4, 41, 48.2];
+    s.ctx.save();
+    s.card({ x: 1000, y: 230, w: 760, h: 560, r: 28, fill: '#ffffff', stroke: 'rgba(0,0,0,.06)', shadow: [[0, 2, 6, 0.06], [0, 24, 60, 0.08]], highlight: false, alpha: s.tween(0.1, 0.5) });
+    s.ctx.restore();
+    label(s, 'STARS / MONTH', { x: 1050, y: 300, size: 20, alpha: s.tween(0.3, 0.4) });
+    s.lineChart(pts, { x: 1060, y: 360, w: 640, h: 360, at: 0.4, dur: 2.2, color: ORANGE, width: 6, min: 0, max: 50 });
+    const k = s.tween(2.6, 0.5, 'outBack');
+    if (k > 0) s.pill('48.2k', { x: 1600, y: 300, size: 24, fill: INK, color: '#fff', stroke: false, alpha: clamp(k) });
+  }, { transition: { type: 'push', duration: 0.7 } })
+
+  // 3 · Three numbers in a row, counted together, each with a thin progress ring.
+  .scene('trio', 4.4, s => {
+    s.bg(BG);
+    s.grid({ spacing: 60, color: LINE, lines: true, x0: 0, y0: 0, x1: s.w, y1: s.h });
+    s.words('Shipped, *not* just starred.', { x: s.cx, y: 250, size: 76, weight: 800, color: INK, accent: ORANGE, align: 'center', at: 0.1, stagger: 0.06 });
+    const stats = [
+      [1284, 'PULL REQUESTS MERGED', '', 0, BLUE, 0.86],
+      [412, 'CONTRIBUTORS', '', 0, ORANGE, 0.64],
+      [99.2, 'UPTIME', '%', 1, GREEN, 0.992],
+    ];
+    stats.forEach(([v, name, suf, dec, col, ring], i) => {
+      const at = 0.5 + i * 0.18, x = 400 + i * 560, y = 620;
+      const k = s.spring(at, { stiffness: 200, damping: 20 });
+      s.layer({ alpha: s.tween(at, 0.3), y: (1 - k) * 60 }, () => {
+        s.card({ cx: x, cy: y, w: 480, h: 420, r: 32, fill: '#ffffff', stroke: 'rgba(0,0,0,.05)', shadow: [[0, 2, 6, 0.05], [0, 30, 60, 0.08]], highlight: false });
+        s.ring(ring, { cx: x, cy: y - 40, r: 128, width: 14, at: at + 0.1, dur: 1.6, color: col, track: 'rgba(0,0,0,.06)' });
+        s.odometer(v, { x, y: y - 18, size: 58, weight: 800, color: INK, align: 'center', at: at + 0.1, dur: 1.6, decimals: dec, suffix: suf, tracking: -0.03 });
+        label(s, name, { x, y: y + 150, size: 21, align: 'center' });
+      });
+    });
+  }, { transition: { type: 'wipe', duration: 0.8, angle: 0, color: ORANGE } })
+
+  // 4 · Bars: downloads per quarter, the last one highlighted.
+  .scene('downloads', 4.0, s => {
+    s.bg(BG);
+    s.grid({ spacing: 60, color: LINE, lines: true, x0: 0, y0: 0, x1: s.w, y1: s.h });
+    label(s, 'WEEKLY DOWNLOADS', { x: 160, y: 250, alpha: s.tween(0.05, 0.4) });
+    s.odometer(2.4, { x: 152, y: 420, size: 170, weight: 800, color: INK, at: 0.15, dur: 1.6, decimals: 1, suffix: 'M', tracking: -0.04 });
+    s.words('npm installs a week, up from *180k* in January.', { x: 160, y: 500, size: 34, weight: 500, color: DIM, accent: INK, at: 0.6, stagger: 0.03, maxWidth: 560, lineHeight: 1.35 });
+    const vals = [0.18, 0.24, 0.31, 0.45, 0.52, 0.66, 0.81, 0.95, 1.2, 1.5, 1.9, 2.4];
+    const months = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+    s.bars(vals, { x: 880, y: 260, w: 880, h: 520, at: 0.35, stagger: 0.06, color: '#c9c3b8', highlight: 11, highlightColor: ORANGE, labels: months, labelColor: DIM, labelSize: 22, r: 8 });
+  }, { transition: { type: 'push', duration: 0.7 } })
+
+  // 5 · Thank-you with confetti.
+  .scene('thanks', 3.2, s => {
+    s.bg(INK);
+    s.chars('Thank you.', { x: s.cx, y: 560, size: 170, weight: 800, align: 'center', color: '#f4f1ea', at: 0.25, stagger: 0.05, tracking: -0.04 });
+    s.words('To 412 contributors and counting.', { x: s.cx, y: 660, size: 40, weight: 500, align: 'center', color: '#a8a4ad', at: 0.9, stagger: 0.04 });
+    s.particles({ x: s.cx, y: 480, at: 0.55, count: 90, speed: 1500, life: 2.2, gravity: 1400, drag: 2.6, colors: [ORANGE, GREEN, BLUE, '#ffd23f', '#ffffff'], shape: 'confetti', size: 9, seed: 21 });
+    const out = s.out(0.4, 'inOut');
+    if (out > 0) { s.ctx.fillStyle = rgba('#000', out); s.ctx.fillRect(0, 0, s.w, s.h); }
+  }, { transition: { type: 'iris', duration: 0.9, y: 0.55 } })
+  .start();
+</script>
+</body>
+</html>

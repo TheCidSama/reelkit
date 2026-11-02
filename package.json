@@ -1,0 +1,55 @@
+{
+  "name": "reelkit",
+  "version": "0.1.0",
+  "description": "Write one HTML file, render a motion-graphics mp4. Deterministic, frame-by-frame, built for coding agents.",
+  "type": "module",
+  "bin": {
+    "reelkit": "bin/reelkit.js"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./runtime": "./runtime/reel.js"
+  },
+  "files": [
+    "bin",
+    "src",
+    "runtime",
+    "preview",
+    "templates",
+    "examples/*.html",
+    "skills",
+    "SKILL.md",
+    "docs/API.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "doctor": "node bin/reelkit.js doctor"
+  },
+  "keywords": [
+    "video",
+    "motion-graphics",
+    "animation",
+    "canvas",
+    "mp4",
+    "agent",
+    "claude-code",
+    "codex",
+    "skill",
+    "render"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "MIT",
+  "author": "thecidsama",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thecidsama/reelkit.git"
+  },
+  "homepage": "https://github.com/thecidsama/reelkit#readme",
+  "bugs": "https://github.com/thecidsama/reelkit/issues",
+  "dependencies": {
+    "ffmpeg-static": "5.3.0",
+    "playwright-core": "1.63.0"
+  }
+}

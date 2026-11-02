@@ -1,0 +1,135 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>reelkit example: terminal demo</title></head>
+<body>
+<script type="module">
+// Terminal demo for a fictional CLI, "tide" (deploy previews). ~16 s, 1920x1080 @ 60 fps.
+// One continuous terminal; the camera does the editing: it leans in on the typing, pulls back for results.
+import { reel, rgba, ease, clamp, lerp, keys, typingTimes } from '/reelkit/reel.js';
+
+const BG = '#0a0b0f', TERM = '#101219', INK = '#e8eaf2', DIM = '#7d8296', GREEN = '#4ade80', CYAN = '#67e8f9', PINK = '#f472b6', YEL = '#fde047';
+const TX = 300, TY = 160, TW = 1320, TH = 660, LX = TX + 48, ROW = 46, FS = 26;
+
+// Script: [time, kind, payload]. Commands are typed; output lines appear instantly (like a real terminal).
+const CMD1 = 'npx tide deploy --preview', CMD2 = 'tide share --qr';
+const T1 = 1.2, T2 = 8.6;
+const end1 = T1 + typingTimes(CMD1, 20).at(-1), end2 = T2 + typingTimes(CMD2, 20).at(-1);
+const OUT = [
+  [end1 + 0.35, [['◇ ', CYAN], ['Building ', INK], ['web/', DIM]]],
+  [end1 + 1.30, [['✓ ', GREEN], ['Built in ', INK], ['1.8s', YEL], ['  ·  412 kB', DIM]]],
+  [end1 + 1.55, [['◇ ', CYAN], ['Uploading 38 files', INK]]],
+  [end1 + 2.60, [['✓ ', GREEN], ['Uploaded', INK], ['  ·  edge: 31 regions', DIM]]],
+  [end1 + 2.90, [['◆ ', PINK], ['Preview ready', INK]]],
+  [end1 + 3.10, [['  ➜ ', DIM], ['https://pr-482.tide.dev', CYAN]]],
+];
+const OUT2 = [
+  [end2 + 0.35, [['✓ ', GREEN], ['Link copied', INK], ['  ·  expires in 7 days', DIM]]],
+];
+
+function spans(s, x, y, list, alpha = 1) {
+  for (const [str, col] of list) x += s.text(str, { x, y, size: FS, font: 'mono', weight: 500, color: col, alpha });
+  return x;
+}
+// progress bar for the build step
+function progressBar(s, x, y, t0, t1) {
+  const k = clamp((s.t - t0) / (t1 - t0)), w = 360, c = s.ctx;
+  if (s.t < t0) return;
+  c.fillStyle = 'rgba(255,255,255,.08)'; s.roundRect(x, y - 14, w, 10, 5); c.fill();
+  c.fillStyle = CYAN; s.roundRect(x, y - 14, w * ease.inOut(k), 10, 5); c.fill();
+}
+// a fake QR code from a seeded grid
+function qr(s, cx, cy, size, k) {
+  const c = s.ctx, n = 21, cell = size / n, r = s.rng(42);
+  c.save(); c.globalAlpha *= clamp(k * 2);
+  s.card({ cx, cy, w: size + 60, h: size + 60, r: 24, fill: '#ffffff', stroke: false });
+  c.fillStyle = '#0a0b0f';
+  const finder = (i, j) => (i < 7 && j < 7) || (i >= n - 7 && j < 7) || (i < 7 && j >= n - 7);
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+    const on = finder(i, j) ? !(i % (n - 7) === 1 || j % (n - 7) === 1 || (i % (n - 7) === 5) || (j % (n - 7) === 5)) || (i % (n - 7) > 1 && i % (n - 7) < 5 && j % (n - 7) > 1 && j % (n - 7) < 5) : r() < 0.5;
+    const d = (i + j) / (2 * n);
+    if (on && k > d * 0.8) c.fillRect(cx - size / 2 + i * cell, cy - size / 2 + j * cell, cell + 0.5, cell + 0.5);
+  }
+  c.restore();
+}
+
+reel({ width: 1920, height: 1080, fps: 60, background: BG, grain: 0.04, vignette: 0.45 })
+  .scene('demo', 13.2, s => {
+    s.bg({ radial: ['#121626', BG], y: 0.4 });
+    s.grid({ spacing: 64, color: 'rgba(255,255,255,.035)', dot: 2 });
+    // camera: start wide, lean into the prompt while typing, pull back for output, push onto the URL, settle.
+    const cam = s.keys([
+      [0, { x: 960, y: 500, zoom: 0.94 }],
+      [1.0, { x: 760, y: 330, zoom: 1.5 }, 'inOutQuint'],
+      [end1 - 0.2, { x: 900, y: 330, zoom: 1.5 }, 'inOut'],
+      [end1 + 0.8, { x: 960, y: 480, zoom: 1.05 }, 'inOutQuint'],
+      [end1 + 3.1, { x: 960, y: 480, zoom: 1.05 }],
+      [end1 + 3.9, { x: 760, y: 540, zoom: 1.55 }, 'inOutQuint'],
+      [T2 - 0.4, { x: 790, y: 545, zoom: 1.55 }],
+      [T2 + 0.4, { x: 960, y: 480, zoom: 1.05 }, 'inOutQuint'],
+    ]);
+    s.camera({ ...cam, shake: 1.2 }, () => {
+      const appear = s.spring(0.05, { stiffness: 140, damping: 18 });
+      s.layer({ alpha: clamp(s.t * 4), scale: lerp(0.94, 1, appear), origin: [960, 550] }, () => {
+        s.card({ x: TX, y: TY, w: TW, h: TH, r: 22, fill: TERM, stroke: 'rgba(255,255,255,.09)', shadow: 'lift' });
+        const c = s.ctx;
+        ['#ff5f57', '#febc2e', '#28c840'].forEach((col, i) => { c.fillStyle = col; c.beginPath(); c.arc(TX + 34 + i * 26, TY + 32, 7.5, 0, 7); c.fill(); });
+        s.text('~/projects/web — zsh', { x: TX + TW / 2, y: TY + 40, size: 18, font: 'mono', color: DIM, align: 'center' });
+        c.fillStyle = 'rgba(255,255,255,.06)'; c.fillRect(TX, TY + 64, TW, 1);
+
+        let y = TY + 130;
+        // command 1
+        spans(s, LX, y, [['❯ ', GREEN]]);
+        const r1 = s.type(CMD1, { x: LX + 34, y, size: FS, at: T1, cps: 20, color: INK, cursor: true, hideCursorAfter: end1 + 0.3 });
+        y += ROW * 1.4;
+        OUT.forEach(([t0, list], i) => {
+          if (s.t < t0) return;
+          const k = s.tween(t0, 0.25, 'outQuint');
+          s.layer({ alpha: k, x: (1 - k) * -10, origin: [0, 0] }, () => {
+            const xEnd = spans(s, LX, y, list);
+            if (i === 0) progressBar(s, xEnd + 30, y + 2, t0 + 0.05, OUT[1][0]);
+          });
+          y += i === 3 ? ROW * 1.35 : ROW;
+        });
+        // the URL gets a marker sweep
+        const urlY = TY + 130 + ROW * 1.4 + ROW * 5 + ROW * 0.35;
+        if (s.t > end1 + 3.6) s.marker({ x: LX + 64, y: urlY - 30, w: 410, h: 40, at: end1 + 3.6, dur: 0.5, color: rgba(CYAN, 0.18), skew: 0 });
+        y += ROW * 0.9;
+        if (s.t > T2 - 0.6) {
+          spans(s, LX, y, [['❯ ', GREEN]]);
+          s.type(CMD2, { x: LX + 34, y, size: FS, at: T2, cps: 20, color: INK, cursor: true, hideCursorAfter: end2 + 0.3 });
+          y += ROW * 1.4;
+          OUT2.forEach(([t0, list]) => { if (s.t >= t0) spans(s, LX, y, list, s.tween(t0, 0.25)); });
+        }
+        if (s.t < end1 + 3.2 && s.t > T1 - 0.6 && r1.done) { /* cursor already parked by type() */ }
+      });
+      // the QR card slides out of the terminal on the right
+      const qk = s.spring(end2 + 0.6, { stiffness: 160, damping: 17 });
+      if (s.t > end2 + 0.6) {
+        s.layer({ x: (1 - qk) * 120, alpha: clamp((s.t - end2 - 0.6) * 4) }, () => {
+          qr(s, 1390, 640, 230, s.tween(end2 + 0.7, 0.8, 'out'));
+          s.text('scan to open', { x: 1390, y: 822, size: 22, font: 'mono', color: DIM, align: 'center' });
+        });
+      }
+    });
+    // caption band, synced to the story
+    const caps = [[1.0, 'One command.'], [end1 + 0.9, 'Built and shipped to the edge.'], [end1 + 3.9, 'A live preview URL, every PR.'], [T2 + 0.3, 'Share it in a scan.']];
+    caps.forEach(([t0, str], i) => {
+      const next = caps[i + 1]?.[0] ?? s.dur - 0.3;
+      if (s.t < t0 || s.t > next + 0.4) return;
+      s.words(str, { x: s.cx, y: 1010, size: 40, weight: 650, align: 'center', at: t0, stagger: 0.05, color: INK, exit: next - 0.25, exitDur: 0.3 });
+    });
+  })
+  .scene('end', 3.0, s => {
+    s.bg({ radial: ['#121626', BG], y: 0.45 });
+    s.grid({ spacing: 64, color: 'rgba(255,255,255,.035)', dot: 2 });
+    s.chars('tide', { x: s.cx, y: 560, size: 210, weight: 800, font: 'mono', align: 'center', at: 0.25, stagger: 0.07, color: INK, tracking: -0.04 });
+    s.layer({ alpha: s.tween(0.8, 0.6), y: (1 - s.tween(0.8, 0.8, 'outExpo')) * 18 }, () => {
+      const box = s.pill('npm i -g tide', { cx: s.cx, cy: 690, size: 30, font: 'mono', weight: 500, fill: 'rgba(255,255,255,.05)', color: CYAN });
+    });
+    const out = s.out(0.4, 'inOut');
+    if (out > 0) { s.ctx.fillStyle = rgba('#000', out); s.ctx.fillRect(0, 0, s.w, s.h); }
+  }, { transition: { type: 'zoom', duration: 0.7 } })
+  .start();
+</script>
+</body>
+</html>

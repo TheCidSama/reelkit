@@ -1,0 +1,72 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>reelkit example: vertical 9:16</title></head>
+<body>
+<script type="module">
+// A 9:16 short (Reels / Shorts / TikTok) for a fictional habit app, "Streak". ~12 s, 1080x1920 @ 60 fps.
+// Vertical rules: big type, one idea per screen, everything inside the safe area (top 250 px and bottom 400 px
+// are covered by platform UI), and motion that reads on a phone held at arm's length.
+import { reel, rgba, ease, clamp, lerp } from '/reelkit/reel.js';
+
+const BG = '#0d0a1a', INK = '#fff8f0', DIM = '#b8b0c8', HOT = '#ff4d6d', SUN = '#ffb347', MINT = '#58f0b4';
+const SAFE_TOP = 260, SAFE_BOTTOM = 1920 - 420;
+
+reel({ width: 1080, height: 1920, fps: 60, background: BG, grain: 0.05, vignette: 0.35 })
+  .scene('hook', 3.0, s => {
+    s.bg({ radial: ['#2a0f2e', BG], y: 0.4, r: 0.9 });
+    s.aurora({ colors: [HOT, '#6a2cff'], intensity: 0.35, seed: 5, size: 0.6 });
+    s.words('Day 1 is', { x: s.cx, y: 760, size: 120, weight: 800, align: 'center', at: 0.2, stagger: 0.1, color: DIM, style: 'mask' });
+    s.words('*easy.*', { x: s.cx, y: 930, size: 220, weight: 900, align: 'center', at: 0.55, accent: INK, style: 'pop', tracking: -0.04 });
+    s.words('Day 47 is where it counts.', { x: s.cx, y: 1120, size: 56, weight: 600, align: 'center', at: 1.3, stagger: 0.06, color: SUN, maxWidth: 820 });
+  })
+  .scene('streak', 4.2, s => {
+    s.bg({ radial: ['#1d0f2e', BG], y: 0.45 });
+    const k = s.spring(0.1, { stiffness: 120, damping: 15 });
+    s.layer({ scale: lerp(0.8, 1, k), alpha: s.tween(0, 0.3), origin: [s.cx, 820] }, () => {
+      s.glow(s.cx, 820, 420, HOT, 0.4 + 0.08 * Math.sin(s.t * 4));
+      // the flame
+      const c = s.ctx, fx = s.cx, fy = 820, f = 1 + 0.03 * Math.sin(s.t * 9) + 0.02 * Math.sin(s.t * 14.3);
+      c.save(); c.translate(fx, fy); c.scale(1, f);
+      const g = c.createLinearGradient(0, -260, 0, 160);
+      g.addColorStop(0, SUN); g.addColorStop(1, HOT);
+      c.fillStyle = g;
+      c.beginPath(); c.moveTo(0, -260); c.bezierCurveTo(150, -110, 190, 0, 150, 90); c.bezierCurveTo(110, 170, -110, 170, -150, 90); c.bezierCurveTo(-190, 0, -70, -60, 0, -260); c.fill();
+      c.fillStyle = 'rgba(255,240,200,.9)';
+      c.beginPath(); c.moveTo(0, -60); c.bezierCurveTo(70, 10, 85, 60, 60, 105); c.bezierCurveTo(30, 145, -30, 145, -60, 105); c.bezierCurveTo(-85, 60, -40, 10, 0, -60); c.fill();
+      c.restore();
+    });
+    s.odometer(47, { x: s.cx, y: 1290, size: 260, weight: 900, align: 'center', color: INK, at: 0.3, dur: 1.6, tracking: -0.05 });
+    s.words('days in a row', { x: s.cx, y: 1390, size: 60, weight: 600, align: 'center', color: DIM, at: 0.9, stagger: 0.06 });
+    s.particles({ x: s.cx, y: 700, at: 1.9, count: 40, speed: 1100, life: 1.0, colors: [SUN, HOT, '#ffffff'], seed: 7, size: 4 });
+  }, { transition: { type: 'whip', direction: 'up', duration: 0.45 } })
+  .scene('week', 3.4, s => {
+    s.bg(BG);
+    s.words('Tiny wins, *every day.*', { x: s.cx, y: 560, size: 84, weight: 800, align: 'center', at: 0.1, stagger: 0.07, accent: MINT, maxWidth: 900, lineHeight: 1.08 });
+    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    days.forEach((d, i) => {
+      const at = 0.55 + i * 0.12, k = s.spring(at, 'bouncy'), col = i === 6 ? HOT : MINT;
+      const x = 150 + i * 130, y = 1000;
+      s.layer({ scale: Math.max(0, k), origin: [x, y] }, () => {
+        s.card({ cx: x, cy: y, w: 110, h: 150, r: 28, fill: rgba(col, 0.14), stroke: rgba(col, 0.5), shadow: false, highlight: false });
+        s.text(d, { x, y: y - 22, size: 32, weight: 700, color: DIM, align: 'center' });
+        const c = s.ctx, ck = s.tween(at + 0.2, 0.35, 'out');
+        c.save(); c.strokeStyle = col; c.lineWidth = 9; c.lineCap = 'round'; c.lineJoin = 'round';
+        c.beginPath(); c.moveTo(x - 24, y + 30); c.lineTo(x - 6, y + 48); c.lineTo(x + 26, y + 12);
+        c.setLineDash([90, 90]); c.lineDashOffset = 90 * (1 - ck); c.stroke(); c.restore();
+      });
+    });
+    s.words('7 / 7 this week', { x: s.cx, y: 1260, size: 56, weight: 700, align: 'center', color: INK, at: 1.6, stagger: 0.05 });
+  }, { transition: { type: 'iris', duration: 0.8, y: 0.45 } })
+  .scene('cta', 3.0, s => {
+    s.bg({ radial: ['#2a0f2e', BG], y: 0.45 });
+    s.aurora({ colors: [HOT, '#6a2cff'], intensity: 0.3, seed: 9, size: 0.55 });
+    s.chars('Streak', { x: s.cx, y: 900, size: 210, weight: 900, align: 'center', at: 0.15, stagger: 0.05, color: INK, tracking: -0.04 });
+    s.words("Don't break the chain.", { x: s.cx, y: 1010, size: 58, weight: 600, align: 'center', color: DIM, at: 0.7, stagger: 0.05 });
+    s.layer({ alpha: s.tween(1.1, 0.5), y: (1 - s.tween(1.1, 0.7, 'outExpo')) * 30 }, () => {
+      s.pill('Free on iOS & Android', { cx: s.cx, cy: 1200, size: 40, fill: HOT, color: '#fff', stroke: false });
+    });
+  }, { transition: { type: 'zoom', duration: 0.7 } })
+  .start();
+</script>
+</body>
+</html>

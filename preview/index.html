@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>reelkit preview</title>
+<style>
+  :root { --bg: #0c0c10; --panel: #15151c; --line: #26262f; --text: #e9e9f1; --dim: #8a8a99; --accent: #9b87ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  body { display: grid; grid-template-rows: 1fr auto; }
+  #stage { position: relative; display: flex; align-items: center; justify-content: center; padding: 20px; min-height: 0; }
+  #frame { border: 0; background: #000; box-shadow: 0 20px 80px rgba(0,0,0,.6); border-radius: 6px; }
+  #err { position: absolute; left: 20px; right: 20px; bottom: 20px; display: none; white-space: pre-wrap; font: 12px/1.5 ui-monospace, Menlo, monospace;
+         background: #2a0f14; color: #ffb4bf; border: 1px solid #5a1d28; padding: 12px 14px; border-radius: 8px; max-height: 40%; overflow: auto; }
+  #bar { background: var(--panel); border-top: 1px solid var(--line); padding: 10px 16px 14px; }
+  #track { position: relative; height: 34px; cursor: pointer; }
+  #rail { position: absolute; left: 0; right: 0; top: 18px; height: 4px; background: var(--line); border-radius: 2px; }
+  #fill { position: absolute; left: 0; top: 18px; height: 4px; background: var(--accent); border-radius: 2px; }
+  #head { position: absolute; top: 12px; width: 2px; height: 16px; background: #fff; margin-left: -1px; }
+  .mark { position: absolute; top: 0; font-size: 11px; color: var(--dim); white-space: nowrap; padding-left: 4px; border-left: 1px solid #3a3a46; height: 30px; }
+  #controls { display: flex; gap: 8px; align-items: center; margin-top: 4px; }
+  button { background: #1f1f28; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; font: inherit; cursor: pointer; }
+  button:hover { border-color: #3d3d4a; }
+  #time { font: 12px ui-monospace, Menlo, monospace; color: var(--dim); margin-left: 6px; }
+  #scene { color: var(--accent); font-weight: 600; margin-left: 6px; }
+  .sp { flex: 1; }
+  .hint { color: var(--dim); font-size: 12px; }
+</style>
+</head>
+<body>
+<div id="stage"><iframe id="frame"></iframe><div id="err"></div></div>
+<div id="bar">
+  <div id="track"><div id="rail"></div><div id="fill"></div><div id="head"></div></div>
+  <div id="controls">
+    <button id="play" title="Space">Play</button>
+    <button id="prev" title="Left arrow">◀ frame</button>
+    <button id="next" title="Right arrow">frame ▶</button>
+    <button id="loop">Loop: on</button>
+    <span id="time">0.000 s · f0</span><span id="scene"></span>
+    <span class="sp"></span>
+    <span class="hint">Space play · ←/→ frame · Shift ±1 s · Home/End · live reload on save</span>
+  </div>
+</div>
+<script>
+const scene = new URLSearchParams(location.search).get('scene');
+const frame = document.getElementById('frame'), err = document.getElementById('err');
+const $ = id => document.getElementById(id);
+let W = null, meta = null, t = +(sessionStorage.getItem('reelkit:t:' + scene) || 0), playing = false, loop = true, last = null;
+document.title = `${scene} · reelkit preview`;
+
+function showError(msg) { err.style.display = 'block'; err.textContent += msg + '\n'; }
+function fit() {
+  if (!meta) return;
+  const st = $('stage'), aw = st.clientWidth - 40, ah = st.clientHeight - 40;
+  const s = Math.min(aw / meta.width, ah / meta.height);
+  frame.style.width = meta.width + 'px'; frame.style.height = meta.height + 'px';
+  frame.style.transform = `scale(${s})`; frame.style.transformOrigin = 'center';
+  frame.style.margin = `${(meta.height * s - meta.height) / 2}px ${(meta.width * s - meta.width) / 2}px`;
+}
+function draw() {
+  if (!W || !meta) return;
+  t = Math.max(0, Math.min(t, meta.duration));
+  try { W.renderFrame(Math.min(t, meta.duration - 1e-6)); } catch (e) { playing = false; showError('renderFrame(' + t.toFixed(3) + '): ' + e.message); }
+  const k = t / meta.duration;
+  $('fill').style.width = (k * 100) + '%'; $('head').style.left = (k * 100) + '%';
+  $('time').textContent = `${t.toFixed(3)} s · f${Math.round(t * meta.fps)} / ${Math.round(meta.duration * meta.fps)}`;
+  const sc = (meta.scenes || []).find(s => t >= s.start && t < s.end);
+  $('scene').textContent = sc ? sc.name : '';
+  sessionStorage.setItem('reelkit:t:' + scene, t);
+}
+function marks() {
+  document.querySelectorAll('.mark').forEach(m => m.remove());
+  for (const s of meta.scenes || []) {
+    const m = document.createElement('div'); m.className = 'mark';
+    m.style.left = (s.start / meta.duration * 100) + '%'; m.textContent = s.name;
+    $('track').appendChild(m);
+  }
+}
+function load() {
+  err.textContent = ''; err.style.display = 'none';
+  frame.src = `/${encodeURIComponent(scene)}?preview&r=${Date.now()}`;
+}
+frame.addEventListener('load', async () => {
+  W = frame.contentWindow;
+  W.addEventListener('error', e => showError(e.message || String(e.error)));
+  W.addEventListener('unhandledrejection', e => showError('unhandled: ' + (e.reason && e.reason.message || e.reason)));
+  const t0 = performance.now();
+  while (!('READY' in W) && performance.now() - t0 < 5000) await new Promise(r => setTimeout(r, 20));
+  try { await W.READY; } catch (e) { showError('READY rejected: ' + (e && e.message || e)); return; }
+  const c = W.document.getElementById('c') || W.document.querySelector('canvas');
+  meta = { fps: W.FPS || 60, duration: W.END, width: c.width, height: c.height, scenes: (W.__reel && W.__reel.scenes) || [] };
+  const st = W.document.createElement('style');
+  st.textContent = 'html,body{margin:0;overflow:hidden;background:#000}#c{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important;display:block}';
+  W.document.head.appendChild(st);
+  fit(); marks(); draw();
+});
+function tick(now) {
+  if (playing && meta) {
+    if (last !== null) t += (now - last) / 1000;
+    if (t >= meta.duration) { if (loop) t = 0; else { t = meta.duration; playing = false; } }
+    draw();
+  }
+  last = playing ? now : null;
+  $('play').textContent = playing ? 'Pause' : 'Play';
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+const step = n => { playing = false; t = (Math.round(t * meta.fps) + n) / meta.fps; draw(); };
+$('play').onclick = () => { if (meta && t >= meta.duration) t = 0; playing = !playing; };
+$('prev').onclick = () => step(-1); $('next').onclick = () => step(1);
+$('loop').onclick = () => { loop = !loop; $('loop').textContent = 'Loop: ' + (loop ? 'on' : 'off'); };
+const seek = e => { const r = $('track').getBoundingClientRect(); t = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * meta.duration; draw(); };
+$('track').addEventListener('pointerdown', e => { playing = false; seek(e); const mv = ev => seek(ev); addEventListener('pointermove', mv); addEventListener('pointerup', () => removeEventListener('pointermove', mv), { once: true }); });
+addEventListener('keydown', e => {
+  if (!meta) return;
+  if (e.key === ' ') { e.preventDefault(); $('play').click(); }
+  else if (e.key === 'ArrowRight') step(e.shiftKey ? meta.fps : 1);
+  else if (e.key === 'ArrowLeft') step(e.shiftKey ? -meta.fps : -1);
+  else if (e.key === 'Home') { t = 0; draw(); }
+  else if (e.key === 'End') { t = meta.duration; draw(); }
+});
+addEventListener('resize', fit);
+new EventSource('/__reelkit/events').addEventListener('reload', () => load());
+load();
+</script>
+</body>
+</html>

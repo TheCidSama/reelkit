@@ -1,0 +1,26 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>reelkit scene</title></head>
+<body>
+<script type="module">
+import { reel, rgba } from '/reelkit/reel.js';
+
+// Palette: one background, one text colour, one accent. Keep it that small.
+const BG = '#0b0b10', INK = '#f2f1f7', DIM = '#8b8a99', ACCENT = '#9b87ff';
+
+reel({ width: 1920, height: 1080, fps: 60, background: BG, grain: 0.05, vignette: 0.35 })
+  .scene('title', 3.2, s => {
+    s.bg({ radial: ['#17142b', BG], y: 0.45 });
+    s.pill('reelkit', { cx: s.cx, cy: 380, size: 26, alpha: s.tween(0.1, 0.5), dot: ACCENT });
+    s.words('Make it *move.*', { x: s.cx, y: 580, size: 150, weight: 750, align: 'center', at: 0.3, accent: ACCENT, exit: 2.7 });
+    s.words('One HTML file. One mp4.', { x: s.cx, y: 680, size: 44, weight: 500, align: 'center', color: DIM, at: 0.9, exit: 2.75 });
+  })
+  .scene('count', 3, s => {
+    s.bg(BG);
+    s.odometer(12480, { x: s.cx, y: 590, size: 220, weight: 700, align: 'center', at: 0.3, dur: 1.8 });
+    s.text('frames rendered', { x: s.cx, y: 680, size: 40, weight: 500, color: rgba(INK, 0.6 * s.tween(0.5, 0.6)), align: 'center' });
+  }, { transition: 'whip' })
+  .start();
+</script>
+</body>
+</html>
