@@ -18,11 +18,9 @@
     "templates",
     "examples/*.html",
     "skills",
-    "SKILL.md",
-    "docs/API.md"
+    "SKILL.md"
   ],
   "scripts": {
-    "test": "node --test test/*.test.js",
     "doctor": "node bin/reelkit.js doctor"
   },
   "keywords": [

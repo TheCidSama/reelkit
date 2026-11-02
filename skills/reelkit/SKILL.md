@@ -38,7 +38,7 @@ reel({ width: 1920, height: 1080, fps: 60, background: BG, grain: 0.04, vignette
 
 `s.t` is seconds since the scene started, `s.dur` its length, `s.p` = t/dur, `s.w/s.h/s.cx/s.cy` the design size and centre. Text `y` is the baseline. Never use `Date.now()`, `Math.random()` or state that carries between frames: use `s.rng(seed)`, `s.wiggle()`, `s.tween()`.
 
-## API cheat sheet (full reference: docs/API.md)
+## API cheat sheet
 
 - Time: `s.tween(at, dur, ease)` -> 0..1 · `s.spring(at, 'snappy'|'gentle'|'bouncy'|{stiffness,damping})` · `s.keys([[t, value, ease], ...])` (numbers, `{x,y,zoom}` objects, colours) · `s.out(dur)` exit progress at scene end.
 - Type: `s.text` · `s.words(str, {at, stagger, style: 'blur'|'rise'|'mask'|'pop', exit, marks:[{word, at}], maxWidth})` (`*accent*` spans, `\n`) · `s.chars` (per-letter spring) · `s.type(str, {at, cps, cursor})` · `s.odometer(value, {at, dur, decimals, prefix, suffix})` · `s.rotator([...words])` · `s.marker({x,y,w,h,at})`.

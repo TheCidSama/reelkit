@@ -80,14 +80,13 @@ The skill ([`SKILL.md`](SKILL.md)) is deliberately short: the workflow, an API c
 | **Examples** | `launch` (product announcement), `stats` (odometers, line/bar charts, rings), `terminal` (typed commands, camera that follows the typing), `vertical` (9:16 short). |
 | **Fonts** | Inter, Archivo and JetBrains Mono, bundled (OFL), so text renders the same everywhere. |
 
-Full reference: [docs/API.md](docs/API.md).
+Every helper and its options are listed in the API cheat sheet in [`SKILL.md`](SKILL.md).
 
 ## How determinism works
 
 - A frame is a pure function of time: `renderFrame(t)` draws the same pixels for the same `t`. The runtime has no wall clock, no unseeded randomness, and no state carried between frames; springs are solved analytically, typing rhythm and particles come from seeded hashes, grain is keyed to the frame number.
 - Motion blur is computed, not faked: the runtime draws several sub-frames inside the shutter interval and averages them (transitions do the same on their two layers).
 - Because frames are independent, `render` splits them across N browser pages and reassembles them in order before piping JPEG (or `--png`) frames to ffmpeg's stdin. No temp files.
-- `npm test` checks this: the same `t` hashes to the same pixels in two separate browser sessions, and rendering out of order changes nothing.
 - The render contract is tiny (`window.READY`, `END`, `FPS`, `renderFrame(t)`, a `<canvas id="c">`), so you can also render a hand-written canvas page without the runtime.
 
 ## How it compares
@@ -113,8 +112,7 @@ Pick Remotion if you want React and its ecosystem (and a mature, much larger pro
 
 ```bash
 npm install
-npm test                 # runtime unit tests + end-to-end render/frames tests
-node bin/reelkit.js render examples/launch.html -o examples/out/launch.mp4
+node bin/reelkit.js render examples/launch.html -o launch.mp4
 ```
 
 ## License

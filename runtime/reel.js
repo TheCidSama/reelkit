@@ -7,7 +7,7 @@
 //
 // Everything is a pure function of time: renderFrame(t) always draws the same pixels for the same t.
 // No Date.now(), no Math.random() (use rng(seed)), no state carried between frames.
-// Docs: docs/API.md. The math half of this file has no DOM dependency and runs in Node.
+// The math half of this file has no DOM dependency and runs in Node.
 
 // ───────────────────────────── math ─────────────────────────────
 
